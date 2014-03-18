@@ -1,0 +1,24 @@
+pre.gk-component-editor {
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
+  border: 1px solid #5C5B5B;
+}
+/* Nicescroll Cursor */
+ .dark.nicescroll-rails > div {
+  background-color: rgba(196, 200, 197, 0.83) !important;
+}
+/* Nicescroll PopScroll Effect*/
+ .nicescroll-popcursor {
+  -webkit-border-radius: 3px;
+  -moz-border-radius: 3px;
+  border-radius: 3px;
+}
+.dark.nicescroll-popcursor.pop {
+  background-Color: rgb(66, 66, 66) !important;
+}
+.classic.nicescroll-popcursor.pop {
+  background-Color: #CED0D3 !important;
+}

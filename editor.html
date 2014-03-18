@@ -1,0 +1,477 @@
+<script src="js/codeparser.js" var="parser"></script>
+<script path="ace/ace" var="ace"></script>
+<script path="ace/config" var="config"></script>
+<script path="ace/virtual_renderer" var="rendererLib"></script>
+<script path="ace/edit_session" var="sessionLib"></script>
+<script path="ace/editor" var="editorLib"></script>
+<script path="ace/undomanager" var="undoLib"></script>
+<script path="ace/range" var="rangeLib"></script>
+<script path="ace/autocomplete" var="autoCompleteLib"></script>
+<script path="ace/snippets" var="snippetsLib"></script>
+<script path="ace/ext/language_tools"></script>
+<script path="ace/theme/monokai"></script>
+<script>
+requirejs.config({
+  context: 'gk',
+  paths: {
+    'ace': 'ace/lib/ace',
+    'ace-min': 'ace-builds/src-min'
+  },
+  shim: {
+    'ace/theme/monokai': ['ace/virtual_renderer', 'ace/mode/html', 'ace/mode/javascript', 'ace/mode/css']
+  }
+});
+</script>
+<element name='editor'>
+
+  <template>
+    <link rel='stylesheet' href='css/editor.css'>
+    <pre id='{{id}}' class='{{class}}' style='{{style}}' mode='{{mode}}' theme='{{theme}}' fontSize='{{fontSize}}' wrap='{{wrap}}' snippets='{{snippets}}'>
+      <content></content>
+    </pre>
+  </template>
+
+  <script>
+  (function(path) {
+    config.set("packaged", true);
+    config.set("workerPath", path);
+    config.set("modePath", path);
+    config.set("themePath", path);
+    config.set("basePath", path);
+  }(require.toUrl('ace-min')));
+
+  function attr($ele, key, def) {
+    var val = $ele.attr(key);
+    return typeof val === 'undefined' ? def : val;
+  }
+
+  function parseBoolean(bool) {
+    return !(bool === 'false' || bool === false);
+  }
+
+  var E = function() {
+    var $container, _renderer, _session, _editor, _doc, _selection,
+      _mode, _theme, _fontSize, _wrap, _snippets,
+      _codeMap, _eventList = [],
+      _scroller, _scroller_h;
+
+    function init(ele, text) {
+      $container = ele;
+      _mode = attr($container, 'mode', 'html');
+      _theme = attr($container, 'theme', 'monokai');
+      _fontSize = attr($container, 'fontSize', 13);
+      _wrap = attr($container, 'wrap', true);
+      _snippets = attr($container, 'snippets', '');
+      _snippets = _snippets.split(',');
+      _renderer = new rendererLib.VirtualRenderer($container[0], 'ace/theme/' + _theme);
+      createSession(text);
+    }
+
+    function createSession(text) {
+      _session = new sessionLib.EditSession(text || '', "ace/mode/" + _mode);
+      _session.setUndoManager(new undoLib.UndoManager());
+      _editor = new editorLib.Editor(_renderer, _session);
+      _doc = _session.getDocument();
+      _selection = _session.getSelection();
+      _codeMap = null;
+      configSession();
+    }
+
+    function configSession() {
+      _session.setTabSize(2);
+      setWrapMode();
+      setFontSize();
+      enableAutoComplete();
+      enableKeybindingMenu();
+      enableFormatter();
+      bindEvents();
+      bindCustomEvents();
+      addNiceScroll();
+      addSnippets();
+    }
+
+    function destroySession() {
+      removeNiceScroll();
+      _editor && _editor.destroy();
+      _renderer && _renderer.destroy();
+    }
+
+    function enableAutoComplete() {
+      autoCompleteLib.Autocomplete.startCommand.bindKey = {
+        win: "Alt-/",
+        mac: "Alt-/"
+      };
+      _editor.setOptions({
+        enableBasicAutocompletion: true,
+        enableSnippets: true
+      });
+    }
+
+    function enableKeybindingMenu() {
+      _editor.commands.addCommand({
+        name: "showKeyboardShortcuts",
+        bindKey: {
+          win: "Ctrl-Alt-h",
+          mac: "Command-Alt-h"
+        },
+        exec: function(e) {
+          config.loadModule("ace/ext/keybinding_menu", function(module) {
+            module.init(e);
+            e.showKeyboardShortcuts();
+          })
+        }
+      });
+    }
+
+    function enableFormatter() {
+      _editor.commands.addCommand({
+        name: "formatContent",
+        bindKey: {
+          win: "Ctrl-Shift-f",
+          mac: "Ctrl-Shift-f"
+        },
+        exec: function(e) {
+          setCode(getCode());
+        }
+      });
+    }
+
+    function bindEvents() {
+      _doc.on('change', function(e) {
+        _codeMap = null;
+      });
+      _session.on('changeWrapMode', function(e) {
+        updateScrollBar();
+      });
+    }
+
+    function bindCustomEvents() {
+      for (var i = 0, j = _eventList.length; i < j; i++) {
+        on.apply(null, _eventList[i]);
+      }
+    }
+
+    function setCode(code, options, callback) {
+      var invoker = (function(e) {
+        return typeof e === 'function' ? e : $.noop;
+      }(arguments[arguments.length - 1])),
+        options = $.extend({
+          format: true,
+          newSession: false
+        }, $.type(options) === "object" ? options : {}),
+        set = function(code, newSession) {
+          _editor.setValue(code, -1);
+          if (newSession) {
+            _session.setUndoManager(new undoLib.UndoManager());
+          }
+        };
+
+      if (options.format) {
+        format(code, function(newCode) {
+          set(newCode, options.newSession);
+          invoker(newCode);
+        });
+      } else {
+        set(code, options.newSession);
+        invoker(code);
+      }
+    }
+
+    function format(code, callback) {
+      var opts = {
+        indent_size: 2,
+        indent_char: ' ',
+        unformatted: ['<![CDATA[', '<![cdata[', ']]>', 'bdo', 'em', 'strong', 'dfn', 'code', 'samp', 'kbd', 'var', 'cite', 'abbr', 'acronym', 'q', 'sub', 'sup', 'tt', 'i', 'b', 'big', 'small', 'u', 's', 'strike', 'font', 'ins', 'del', 'pre', 'address', 'dt', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'],
+        preserve_newlines: true,
+        brace_style: "collapse",
+        keep_array_indentation: false,
+        space_after_anon_function: true,
+        space_before_conditional: true,
+        max_char: 500,
+        indent_scripts: "normal"
+      };
+
+      switch (_mode) {
+        case 'javascript':
+          require(['./jsbeautifier/beautify'], function(formatter) {
+            callback(formatter(code, opts));
+          });
+          break;
+        case 'css':
+          require(['./jsbeautifier/beautify-css'], function(formatter) {
+            callback(formatter.css_beautify(code, opts));
+          });
+          break;
+        default:
+          require(['./jsbeautifier/beautify-html'], function(formatter) {
+            callback(formatter.html_beautify(code, opts).replace("< ![CDATA[", "<![CDATA[").replace("]] >", "]]>"));
+          });
+          break;
+      }
+    }
+
+    function getCode() {
+      return _editor ? _editor.getValue() : '';
+    }
+
+    function selectCode(ele) {
+      var codePos, eleContainer = [];
+
+      if (!_codeMap) {
+        _mode === 'html' && (_codeMap = parser.parse(getCode()));
+      }
+      if ($.isArray(ele)) {
+        $.each(ele, function(idx, value) {
+          var tn = parser.traverseNode(_codeMap, value);
+          tn && eleContainer.push(tn);
+        });
+        if (eleContainer.length > 1) {
+          eleContainer.sort(function(a, b) {
+            var aline = a.from.line,
+              bline = b.from.line,
+              ach = a.from.ch,
+              bch = b.from.ch;
+            return (aline !== bline ? (aline > bline ? 1 : -1) : (ach > bch ? 1 : -1));
+          });
+          codePos = eleContainer[0];
+          codePos.to = eleContainer[eleContainer.length - 1].to;
+        } else {
+          codePos = eleContainer[0];
+        }
+      } else {
+        codePos = parser.traverseNode(_codeMap, ele)
+      }
+      if (codePos) {
+        _selection && _selection.setRange(new rangeLib.Range(codePos.to.line, codePos.to.ch, codePos.from.line, codePos.from.ch));
+        _editor.scrollToLine(Math.round((codePos.from.line + codePos.to.line) / 2.0), true);
+      }
+    }
+
+    function unselect() {
+      _selection && _selection.clearSelection();
+    }
+
+    function setTheme(theme) {
+      theme ? _theme = theme : theme = _theme;
+      _renderer && _renderer.setTheme('ace/theme/' + theme);
+    }
+
+    function setFontSize(size) {
+      size ? _fontSize = size : size = _fontSize;
+      _editor && _editor.setFontSize(parseInt(size));
+    }
+
+    function setWrapMode(wrap) {
+      typeof wrap !== 'undefined' ? _wrap = wrap : wrap = _wrap;
+      _session && _session.setUseWrapMode(parseBoolean(wrap));
+    }
+
+    function editable(canEdit) {
+      _editor && _editor.setReadOnly(!parseBoolean(canEdit));
+    }
+
+    function resize() {
+      _editor && _editor.resize();
+      updateScrollBar();
+    }
+
+    function updateScrollBar() {
+      if ($.nicescroll) {
+        if (_scroller) {
+          _scroller.each(function(i) {
+            _scroller[i].updateScrollBar();
+          });
+          _scroller.resize();
+        }
+        if (_scroller_h) {
+          _scroller_h.each(function(i) {
+            _scroller_h[i].updateScrollBar();
+          });
+          _scroller_h.resize();
+        }
+      }
+    }
+
+    function focus() {
+      _editor && _editor.focus();
+    }
+
+    function isFocused() {
+      return _editor ? _editor.isFocused() : false;
+    }
+
+    function on(evt, handler, delay) {
+      var listenObj = '^(editor|session|doc|selection)$',
+        pos = evt.indexOf(':'),
+        target = pos === -1 ? 'session' : evt.substring(0, pos),
+        evt = pos === -1 ? evt : evt.substring(pos + 1),
+        timer;
+
+      if (target.match(listenObj) && evt) {
+        target = eval('_' + target);
+        target && target.on(evt, function(obj) {
+          timer && clearTimeout(timer);
+          if (delay) {
+            timer = setTimeout(function() {
+              handler(obj);
+            }, delay);
+          } else {
+            handler(obj);
+          }
+        });
+      }
+    }
+
+    function addCustomSnippets(snippetText) {
+      var snippetManager = snippetsLib.snippetManager;
+      if (snippetText) {
+        config.loadModule("ace/snippets/" + _mode, function(m) {
+          if (m) {
+            snippetManager.files[_mode] = m;
+            m.snippetText += snippetText;
+            m.snippets = snippetManager.parseSnippetFile(m.snippetText);
+            snippetManager.register(m.snippets, m.scope);
+          }
+        });
+      }
+    }
+
+    function addSnippets() {
+      for (var i = 0, j = _snippets.length; i < j; i += 1) {
+        $.get(_snippets[i], function(snippetText) {
+          addCustomSnippets(snippetText);
+        });
+      }
+    }
+
+    function hookAPI(exports) {
+      exports.setCode = setCode;
+      exports.getCode = getCode;
+      exports.selectCode = selectCode;
+      exports.unselect = unselect;
+      exports.setTheme = setTheme;
+      exports.setFontSize = setFontSize;
+      exports.setWrapMode = setWrapMode;
+      exports.editable = editable;
+      exports.resize = resize;
+      exports.refresh = resize;
+      exports.updateScrollBar = updateScrollBar;
+      exports.focus = focus;
+      exports.isFocused = isFocused;
+      exports.on = function() {
+        _eventList.push(arguments);
+        on.apply(null, arguments);
+      };
+      exports.addCustomSnippets = addCustomSnippets;
+    }
+
+    function removeNiceScroll() {
+      if ($.nicescroll) {
+        _scroller && _scroller.resize().hide();
+        _scroller_h && _scroller_h.resize().hide();
+      }
+    }
+
+    function addNiceScroll() {
+      if ($.nicescroll) {
+        _scroller = hookNiceScroll($container.find('.ace_scrollbar'));
+        _scroller_h = hookNiceScroll($container.find('.ace_scrollbar-h'));
+      }
+    }
+
+    this.init = init;
+    this.hookAPI = hookAPI;
+  };
+
+  function hookNiceScroll($scroll) {
+    var $ns;
+
+    if (!$scroll.length) {
+      return;
+    }
+    $scroll.niceScroll({
+      railcolor: "",
+      cursoropacitymax: 0.8,
+      cursorwidth: 8,
+      cursorheight: 8,
+      cursorborder: "",
+      cursorborderradius: "3px",
+      zindex: 20,
+      autohidemode: false
+    });
+    $ns = $scroll.getNiceScroll();
+    $ns.each(function(i) {
+      $ns[i].rail.addClass('dark');
+      $ns[i].railh.addClass('dark');
+      popCursorEffect($ns[i]);
+    });
+    return $ns;
+  }
+
+  function popCursorEffect($ns, disableHR) {
+    if (disableHR) {
+      enhace($ns.rail, $ns.cursor, false);
+    } else {
+      enhace($ns.rail, $ns.cursor, false);
+      enhace($ns.railh, $ns.cursorh, true);
+    }
+
+    function enhace(rail, cursor, enhanceHR) {
+      rail.addClass("nicescroll-popcursor");
+      enhanceHR ? cursor.css({
+        height: 3,
+        top: '0.4em'
+      }) :
+        cursor.css({
+          width: 3
+        });
+      rail.hover(
+        function() {
+          rail.addClass("pop");
+          enhanceHR ? cursor.stop().css({
+            height: 8,
+            top: 0
+          }) : cursor.stop().css({
+            width: 8
+          });
+        },
+        function() {
+          if (!cursor._mousedown) cancelPopCursor();
+        }
+      );
+      cursor.mousedown(function() {
+        cursor._mousedown = true;
+      });
+      cursor.mouseup(function() {
+        cursor._mousedown = false;
+        cancelPopCursor();
+      });
+      $(document).mouseup(function() {
+        cursor._mousedown = false;
+        cancelPopCursor();
+      });
+
+      function cancelPopCursor() {
+        rail.removeClass("pop");
+        enhanceHR ? cursor.stop().animate({
+          height: 3,
+          top: '0.4em'
+        }, 200) : cursor.stop().animate({
+          width: 3
+        }, 200);
+      }
+    }
+  }
+
+  registerElement('editor', {
+
+    init: function() {
+      var editor = new E();
+      editor.init(this.$ele, this.$originEle.html().trim());
+      editor.hookAPI(this);
+    }
+
+  });
+  </script>
+
+</element>

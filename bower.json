@@ -1,0 +1,30 @@
+{
+  "name": "gk-editor",
+  "version": "0.0.1",
+  "authors": [
+    "EZoUI <ezoservice@icsc.com.tw>"
+  ],
+  "main": "editor.html",
+  "keywords": [
+    "gk",
+    "web-components",
+    "ace-editor"
+  ],
+  "license": "MIT",
+  "homepage": "http://www.ezoui.com/",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "ace": "../ace#gk-fix",
+    "ace-builds": "#b2f8bf1e745250596afea5b39c70b94421af906d"
+  },
+  "devDependencies": {
+    "gk-loader": "../gk-loader"
+  }
+}
