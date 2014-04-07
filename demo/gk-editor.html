@@ -7,7 +7,7 @@
   <script src='../../requirejs/require.js'></script>
   <script src='../../jquery/jquery.min.js'></script>
   <script src='../../jquery.gk/jquery.gk.js'></script>
-  <script src="../../gk-loader/gk-loader.js" components="../editor.html" callback='changeTheme'></script>
+  <script src="../../gk-loader/gk-loader.js" baseUrl="../" components="editor.html" callback='changeTheme'></script>
   <script>
   function changeTheme() {
     $('#editor2').gk().setTheme('tomorrow');

@@ -14,8 +14,8 @@
 requirejs.config({
   context: 'gk',
   paths: {
-    'ace': 'components/ace/lib/ace',
-    'ace-min': 'components/ace-builds/src-min'
+    'ace': module.name + '/../../ace/lib/ace',
+    'ace-min': module.name + '/../../ace-builds/src-min'
   },
   shim: {
     'ace/theme/monokai': ['ace/virtual_renderer', 'ace/mode/html', 'ace/mode/javascript', 'ace/mode/css']
