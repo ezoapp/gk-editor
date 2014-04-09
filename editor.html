@@ -338,10 +338,17 @@ requirejs.config({
 
     function addSnippets() {
       for (var i = 0, j = _snippets.length; i < j; i += 1) {
-        $.get(_snippets[i], function(snippetText) {
-          addCustomSnippets(snippetText);
-        });
+        if (typeof _snippets[i] === 'string' && _snippets[i].trim()) {
+          $.get(_snippets[i], function(snippetText) {
+            addCustomSnippets(snippetText);
+          });
+        }
       }
+    }
+
+    function setSnippets(snippets) {
+      _snippets = snippets.split(',');
+      addSnippets();
     }
 
     function hookAPI(exports) {
@@ -363,6 +370,7 @@ requirejs.config({
         on.apply(null, arguments);
       };
       exports.addCustomSnippets = addCustomSnippets;
+      exports.setSnippets = setSnippets;
     }
 
     function removeNiceScroll() {
