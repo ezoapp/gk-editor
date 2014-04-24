@@ -1,21 +1,9 @@
-<script src="js/codeparser.js" var="parser"></script>
-<script path="ace/ace" var="ace"></script>
-<script path="ace/config" var="config"></script>
-<script path="ace/virtual_renderer" var="rendererLib"></script>
-<script path="ace/edit_session" var="sessionLib"></script>
-<script path="ace/editor" var="editorLib"></script>
-<script path="ace/undomanager" var="undoLib"></script>
-<script path="ace/range" var="rangeLib"></script>
-<script path="ace/autocomplete" var="autoCompleteLib"></script>
-<script path="ace/snippets" var="snippetsLib"></script>
-<script path="ace/ext/language_tools"></script>
-<script path="ace/theme/monokai"></script>
 <script>
 requirejs.config({
   context: 'gk',
   paths: {
-    'ace': module.name + '/../../ace/lib/ace',
-    'ace-min': module.name + '/../../ace-builds/src-min'
+    'ace': module.id + '/../../ace/lib/ace',
+    'ace-min': module.id + '/../../ace-builds/src-min'
   },
   shim: {
     'ace/theme/monokai': ['ace/virtual_renderer', 'ace/mode/html', 'ace/mode/javascript', 'ace/mode/css']
@@ -32,6 +20,22 @@ requirejs.config({
   </template>
 
   <script>
+  var ace = require('ace/ace'),
+    config = require('ace/config'),
+    rendererLib = require('ace/virtual_renderer'),
+    sessionLib = require('ace/edit_session'),
+    editorLib = require('ace/editor'),
+    undoLib = require('ace/undomanager'),
+    rangeLib = require('ace/range'),
+    autoCompleteLib = require('ace/autocomplete'),
+    snippetsLib = require('ace/snippets'),
+    shortcutMenuLib = require('ace/ext/keybinding_menu'),
+    parser = require('./js/codeparser'),
+    domParser = new window.DOMParser();
+
+  require('ace/ext/language_tools');
+  require('ace/theme/monokai');
+
   (function(path) {
     config.set("packaged", true);
     config.set("workerPath", path);
@@ -52,7 +56,7 @@ requirejs.config({
   var E = function() {
     var $container, _renderer, _session, _editor, _doc, _selection,
       _mode, _theme, _fontSize, _wrap, _snippets,
-      _codeMap, _eventList = [],
+      _codeMap, _rootPath, _eventList = [],
       _scroller, _scroller_h;
 
     function init(ele, text) {
@@ -108,19 +112,7 @@ requirejs.config({
     }
 
     function enableKeybindingMenu() {
-      _editor.commands.addCommand({
-        name: "showKeyboardShortcuts",
-        bindKey: {
-          win: "Ctrl-Alt-h",
-          mac: "Command-Alt-h"
-        },
-        exec: function(e) {
-          config.loadModule("ace/ext/keybinding_menu", function(module) {
-            module.init(e);
-            e.showKeyboardShortcuts();
-          })
-        }
-      });
+      _editor && shortcutMenuLib.init(_editor);
     }
 
     function enableFormatter() {
@@ -214,15 +206,26 @@ requirejs.config({
       return _editor ? _editor.getValue() : '';
     }
 
-    function selectCode(ele) {
-      var codePos, eleContainer = [];
+    function selectCode(ele, container) {
+      var codePos,
+        eleContainer = [],
+        rootEle;
 
       if (!_codeMap) {
-        _mode === 'html' && (_codeMap = parser.parse(getCode()));
+        if (_mode === 'html') {
+          var code = getCode();
+          _codeMap = parser.parse(code);
+          if (container) {
+            rootEle = getDOMElement(code, container);
+            if (rootEle) {
+              _rootPath = [0].concat(parser.getElementPath(rootEle));
+            }
+          }
+        }
       }
       if ($.isArray(ele)) {
         $.each(ele, function(idx, value) {
-          var tn = parser.traverseNode(_codeMap, value);
+          var tn = parser.traverseNode(_codeMap, value, _rootPath);
           tn && eleContainer.push(tn);
         });
         if (eleContainer.length > 1) {
@@ -239,12 +242,16 @@ requirejs.config({
           codePos = eleContainer[0];
         }
       } else {
-        codePos = parser.traverseNode(_codeMap, ele)
+        codePos = parser.traverseNode(_codeMap, ele, _rootPath);
       }
       if (codePos) {
         _selection && _selection.setRange(new rangeLib.Range(codePos.to.line, codePos.to.ch, codePos.from.line, codePos.from.ch));
         _editor.scrollToLine(Math.round((codePos.from.line + codePos.to.line) / 2.0), true);
       }
+    }
+
+    function getDOMElement(code, selector) {
+      return domParser.parseFromString(code, 'text/html').querySelector(selector);
     }
 
     function unselect() {
@@ -351,6 +358,10 @@ requirejs.config({
       addSnippets();
     }
 
+    function showShortcuts() {
+      _editor && _editor.showKeyboardShortcuts();
+    }
+
     function hookAPI(exports) {
       exports.setCode = setCode;
       exports.getCode = getCode;
@@ -371,6 +382,7 @@ requirejs.config({
       };
       exports.addCustomSnippets = addCustomSnippets;
       exports.setSnippets = setSnippets;
+      exports.showShortcuts = showShortcuts;
     }
 
     function removeNiceScroll() {

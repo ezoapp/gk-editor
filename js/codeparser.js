@@ -1,4 +1,4 @@
-define(['./simplehtmlparser'], function () {
+define(['../../gk-loader/lib/simplehtmlparser.min'], function () {
   var voidMap = (function () {
     var voidEle = ["area", "base", "br", "col", "embed", "hr", "img", "input", "keygen", "link", "meta", "param", "source", "track", "wbr"],
       map = {};
@@ -8,6 +8,7 @@ define(['./simplehtmlparser'], function () {
     return map;
   }()),
     parser = new SimpleHtmlParser(),
+    invisibles = /__gk-.+__/,
     lc,
     buffer,
     map,
@@ -92,6 +93,9 @@ define(['./simplehtmlparser'], function () {
       parent = ele.parentElement;
     if (parent) {
       path = getElementPath(parent);
+      if (invisibles.test(ele.id)) {
+        return path;
+      }
       for (var i = 0, j = parent.children.length; i < j; i++) {
         if (parent.children[i] === ele) {
           break;
@@ -125,16 +129,17 @@ define(['./simplehtmlparser'], function () {
       });
       return map;
     },
-    traverseNode: function (map, ele) {
+    traverseNode: function (map, ele, rootPath) {
       if (!(map && ele)) {
         return;
       }
       var node = map['ROOT'],
-        path = getElementPath(ele);
+        path = (rootPath || []).concat(getElementPath(ele));
       for (var i = 0, j = path.length; node && i < j; i++) {
         node = map[node.children[path[i]]];
       }
       return node;
-    }
+    },
+    getElementPath: getElementPath
   };
 });

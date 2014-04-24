@@ -12,10 +12,8 @@
   "license": "MIT",
   "homepage": "http://www.ezoui.com/",
   "dependencies": {
+    "gk-loader": "master",
     "ace": "https://github.com/ezoapp/aceeditor.git#gk-fix",
     "ace-builds": "#b2f8bf1e745250596afea5b39c70b94421af906d"
-  },
-  "devDependencies": {
-    "gk-loader": "master"
   }
 }

@@ -22,3 +22,6 @@ pre.gk-component-editor {
 .classic.nicescroll-popcursor.pop {
   background-Color: #CED0D3 !important;
 }
+.modal-dialog {
+  width:730px;
+}
