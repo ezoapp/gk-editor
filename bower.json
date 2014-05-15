@@ -14,6 +14,6 @@
   "dependencies": {
     "gk-loader": "master",
     "ace": "https://github.com/ezoapp/aceeditor.git#gk-fix",
-    "ace-builds": "#b2f8bf1e745250596afea5b39c70b94421af906d"
+    "ace-builds": "#3bfda31096cf3f42b77aac64eb788584ea796822"
   }
 }

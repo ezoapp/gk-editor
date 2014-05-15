@@ -31,9 +31,15 @@ requirejs.config({
     snippetsLib = require('ace/snippets'),
     shortcutMenuLib = require('ace/ext/keybinding_menu'),
     parser = require('./js/codeparser'),
+    jsBeauty = require('./jsbeautifier/beautify'),
+    cssBeauty = require('./jsbeautifier/beautify-css'),
+    htmlBeauty = require('./jsbeautifier/beautify-html'),
     domParser = new window.DOMParser();
 
   require('ace/ext/language_tools');
+  require('ace/mode/html');
+  require('ace/mode/javascript');
+  require('ace/mode/css');
   require('ace/theme/monokai');
 
   (function(path) {
@@ -43,6 +49,7 @@ requirejs.config({
     config.set("themePath", path);
     config.set("basePath", path);
   }(require.toUrl('ace-min')));
+  sessionLib.EditSession.prototype.$useWorker = false;
 
   function attr($ele, key, def) {
     var val = $ele.attr(key);
@@ -158,6 +165,7 @@ requirejs.config({
           }
         };
 
+      code = code || '';
       if (options.format) {
         format(code, function(newCode) {
           set(newCode, options.newSession);
@@ -185,19 +193,13 @@ requirejs.config({
 
       switch (_mode) {
         case 'javascript':
-          require(['./jsbeautifier/beautify'], function(formatter) {
-            callback(formatter(code, opts));
-          });
+          callback(jsBeauty(code, opts));
           break;
         case 'css':
-          require(['./jsbeautifier/beautify-css'], function(formatter) {
-            callback(formatter.css_beautify(code, opts));
-          });
+          callback(cssBeauty.css_beautify(code, opts));
           break;
         default:
-          require(['./jsbeautifier/beautify-html'], function(formatter) {
-            callback(formatter.html_beautify(code, opts).replace("< ![CDATA[", "<![CDATA[").replace("]] >", "]]>"));
-          });
+          callback(htmlBeauty.html_beautify(code, opts).replace("< ![CDATA[", "<![CDATA[").replace("]] >", "]]>"));
           break;
       }
     }
