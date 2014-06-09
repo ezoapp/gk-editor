@@ -163,12 +163,14 @@ requirejs.config({
           if (newSession) {
             _session.setUndoManager(new undoLib.UndoManager());
           }
-        };
+        }, pos;
 
       code = code || '';
       if (options.format) {
+        pos = _selection.getCursor();
         format(code, function(newCode) {
           set(newCode, options.newSession);
+          _selection.moveCursorToPosition(pos);
           invoker(newCode);
         });
       } else {
