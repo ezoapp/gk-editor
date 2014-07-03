@@ -165,7 +165,8 @@ requirejs.config({
           }
         }, pos;
 
-      code = code || '';
+      code = (code || '');
+      (_mode === 'html') && (code = code.replace(/=""/g, ''));
       if (options.format) {
         pos = _selection.getCursor();
         format(code, function(newCode) {
