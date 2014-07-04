@@ -167,7 +167,7 @@ requirejs.config({
 
       code = (code || '');
       (_mode === 'html') && (code = code.replace(/=""/g, ''));
-      if (options.format) {
+      if (options.format && _mode !== 'css') {
         pos = _selection.getCursor();
         format(code, function(newCode) {
           set(newCode, options.newSession);
