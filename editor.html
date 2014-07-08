@@ -130,7 +130,11 @@ requirejs.config({
           mac: "Ctrl-Shift-f"
         },
         exec: function(e) {
-          setCode(getCode());
+          format(getCode(), function(newCode) {
+            setCode(newCode, {
+              format: false
+            });
+          });
         }
       });
     }
@@ -152,8 +156,8 @@ requirejs.config({
 
     function setCode(code, options, callback) {
       var invoker = (function(e) {
-        return typeof e === 'function' ? e : $.noop;
-      }(arguments[arguments.length - 1])),
+          return typeof e === 'function' ? e : $.noop;
+        }(arguments[arguments.length - 1])),
         options = $.extend({
           format: true,
           newSession: false
@@ -163,7 +167,8 @@ requirejs.config({
           if (newSession) {
             _session.setUndoManager(new undoLib.UndoManager());
           }
-        }, pos;
+        },
+        pos;
 
       code = (code || '');
       (_mode === 'html') && (code = code.replace(/=""/g, ''));
@@ -444,9 +449,9 @@ requirejs.config({
     function enhace(rail, cursor, enhanceHR) {
       rail.addClass("nicescroll-popcursor");
       enhanceHR ? cursor.css({
-        height: 3,
-        top: '0.4em'
-      }) :
+          height: 3,
+          top: '0.4em'
+        }) :
         cursor.css({
           width: 3
         });
