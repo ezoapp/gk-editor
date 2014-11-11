@@ -14,6 +14,6 @@
   "dependencies": {
     "gk-loader": "ezoapp/gk-loader#master",
     "ace": "ezoapp/aceeditor#gk-fix",
-    "ace-builds": "#~1.1.5"
+    "ace-builds": "#~1.1.8"
   }
 }
