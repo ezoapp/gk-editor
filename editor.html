@@ -372,6 +372,15 @@ requirejs.config({
       _editor && _editor.showKeyboardShortcuts();
     }
 
+    function getSelectedText() {
+      return _editor ? _editor.getSelectedText() || "" : "";
+    }
+
+    function findAll(val, options) {
+      options = options || {};
+      _editor.findAll(val, options);
+    }
+
     function hookAPI(exports) {
       exports.setCode = setCode;
       exports.getCode = getCode;
@@ -393,6 +402,8 @@ requirejs.config({
       exports.addCustomSnippets = addCustomSnippets;
       exports.setSnippets = setSnippets;
       exports.showShortcuts = showShortcuts;
+      exports.getSelectedText = getSelectedText;
+      exports.findAll = findAll;
     }
 
     function removeNiceScroll() {
