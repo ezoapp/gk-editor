@@ -6,7 +6,6 @@
   "main": "editor.html",
   "keywords": [
     "gk",
-    "web-components",
     "ace-editor"
   ],
   "license": "MIT",
